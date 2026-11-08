@@ -22,9 +22,13 @@ export interface AppConfig {
 
 export function loadConfig(): AppConfig {
   const port = parseInt(process.env.PORT || '3000', 10);
+  let rawBaseUrl = (process.env.PUBLIC_BASE_URL || `http://localhost:${port}`).trim().replace(/\/+$/, '');
+  if (rawBaseUrl && !/^https?:\/\//i.test(rawBaseUrl)) {
+    rawBaseUrl = `https://${rawBaseUrl}`;
+  }
   return {
     port,
-    publicBaseUrl: (process.env.PUBLIC_BASE_URL || `http://localhost:${port}`).replace(/\/+$/, ''),
+    publicBaseUrl: rawBaseUrl,
     databaseUrl: process.env.DATABASE_URL || '',
     mcpBearerToken: process.env.MCP_BEARER_TOKEN || 'mcp_secret_token_change_me',
     stationBearerToken: process.env.STATION_BEARER_TOKEN || 'station_secret_token_change_me',
