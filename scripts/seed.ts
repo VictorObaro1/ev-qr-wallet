@@ -23,6 +23,22 @@ async function main() {
   const sampleToken = tokenService.createToken(samplePassId);
   console.log('\n🔐 Sample QR Token format:', sampleToken);
 
+  if (config.publicBaseUrl && !config.publicBaseUrl.includes('localhost')) {
+    try {
+      const remoteRes = await fetch(`${config.publicBaseUrl}/v1/internal/reset-seed`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.stationBearerToken}`,
+        },
+      });
+      if (remoteRes.ok) {
+        console.log(`\n🌐 Remote server (${config.publicBaseUrl}) ORD-0001 also reset to PENDING_PAYMENT!`);
+      }
+    } catch {
+      // Ignore if remote is unreachable
+    }
+  }
+
   await pool.end();
 }
 

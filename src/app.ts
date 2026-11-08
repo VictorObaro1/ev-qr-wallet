@@ -234,5 +234,31 @@ export function createApp(
     }
   );
 
+  app.post('/v1/internal/reset-seed', stationAuth, async (_req: Request, res: Response) => {
+    const expiresAt = new Date(Date.now() + 30 * 60_000).toISOString();
+    await pool.query(
+      `DELETE FROM redemptions WHERE pass_id IN (SELECT pass_id FROM passes WHERE order_id = 'ORD-0001')`
+    );
+    await pool.query(`DELETE FROM passes WHERE order_id = 'ORD-0001'`);
+    await pool.query(
+      `INSERT INTO swap_orders (
+        order_id, rider_id, quantity, amount_kobo, amount_paid_kobo,
+        bank_name, account_number, idempotency_key, paystack_ref, status, expires_at
+      ) VALUES (
+        'ORD-0001', 'RDR-0001', 2, 150000, 0,
+        'Paystack-Titan', '0012345678', 'seed-ord-0001', 'rp_ord_0001', 'PENDING_PAYMENT', $1
+      )
+      ON CONFLICT (order_id) DO UPDATE SET
+        quantity = 2,
+        amount_kobo = 150000,
+        amount_paid_kobo = 0,
+        status = 'PENDING_PAYMENT',
+        expires_at = EXCLUDED.expires_at`,
+      [expiresAt]
+    );
+    await savePoolSnapshot(pool);
+    res.status(200).json({ status: 'ok', order_id: 'ORD-0001', expires_at: expiresAt });
+  });
+
   return app;
 }

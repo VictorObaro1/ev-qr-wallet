@@ -178,7 +178,7 @@ export async function initDatabase(pool: pg.Pool): Promise<void> {
     }
   }
 
-  // Ensure default test order ORD-0001 (2 passes = 1500 NGN for RDR-0001) exists
+  // Ensure default test order ORD-0001 (2 passes = 1500 NGN for RDR-0001) exists and has a fresh window if unpaid
   const expiresAt = new Date(Date.now() + 30 * 60_000).toISOString();
   await pool.query(
     `INSERT INTO swap_orders (
@@ -188,7 +188,9 @@ export async function initDatabase(pool: pg.Pool): Promise<void> {
       'ORD-0001', 'RDR-0001', 2, 150000, 0,
       'Paystack-Titan', '0012345678', 'seed-ord-0001', 'rp_ord_0001', 'PENDING_PAYMENT', $1
     )
-    ON CONFLICT (order_id) DO NOTHING`,
+    ON CONFLICT (order_id) DO UPDATE SET
+      status = CASE WHEN swap_orders.status = 'EXPIRED' AND swap_orders.amount_paid_kobo = 0 THEN 'PENDING_PAYMENT' ELSE swap_orders.status END,
+      expires_at = CASE WHEN swap_orders.status IN ('PENDING_PAYMENT', 'EXPIRED') AND swap_orders.amount_paid_kobo = 0 THEN EXCLUDED.expires_at ELSE swap_orders.expires_at END`,
     [expiresAt]
   );
 
