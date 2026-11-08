@@ -115,7 +115,7 @@ async function main() {
   }
 
   const config = loadConfig();
-  let baseUrl = (parsed.url || `http://localhost:${config.port}`).replace(/\/+$/, '');
+  let baseUrl = (parsed.url || config.publicBaseUrl || `http://localhost:${config.port}`).replace(/\/+$/, '');
   const paystack = new PaystackService(config.paystackSecretKey, config.paystackBaseUrl);
 
   let tempServer: http.Server | null = null;

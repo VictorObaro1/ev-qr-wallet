@@ -72,7 +72,7 @@ async function main() {
   }
 
   const config = loadConfig();
-  let baseUrl = (url || `http://localhost:${config.port}`).replace(/\/+$/, '');
+  let baseUrl = (url || config.publicBaseUrl || `http://localhost:${config.port}`).replace(/\/+$/, '');
 
   let tempServer: http.Server | null = null;
   let tempPool: Awaited<ReturnType<typeof createPool>> | null = null;

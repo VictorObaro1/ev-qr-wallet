@@ -1,5 +1,10 @@
 import crypto from 'crypto';
 import express, { Request, Response, NextFunction } from 'express';
+
+// Ensure Web Crypto API (globalThis.crypto) is defined on Node 18 runtimes (e.g. Railway Nixpacks default)
+if (!globalThis.crypto) {
+  (globalThis as any).crypto = crypto.webcrypto;
+}
 import pg from 'pg';
 import { AppConfig } from './config.js';
 import { savePoolSnapshot } from './db/index.js';

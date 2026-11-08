@@ -42,3 +42,12 @@ This document records real technical issues discovered and resolved while design
 - **Fix / workaround**: Updated `scripts/mock-pay.ts` and `scripts/station-scan.ts` to accept positional arguments (`npm run mock-pay ORD-0001 1000`), `process.env.npm_config_*` variables, and `--flag` syntax interchangeably, and pre-seeded `ORD-0001` in `src/db/index.ts`.
 - **Suggested change to Chord / docs / API**: Prefer positional CLI arguments (e.g., `npm run mock-pay ORD-0001 1000`) in cross-platform README commands so Windows PowerShell users don't hit `npm run --` flag-stripping.
 
+---
+
+### Problem 6: `ReferenceError: crypto is not defined` on Railway Nixpacks Default Node 18 Runtime
+- **What happened**: After deploying to Railway (`https://ev-qr-wallet-production.up.railway.app`), `GET /health` and `GET /mcp` returned `200 OK`, but sending a JSON-RPC `POST /mcp` request returned `{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error","data":"ReferenceError: crypto is not defined"},"id":null}`.
+- **How I found the cause**: Live smoke-testing `POST https://ev-qr-wallet-production.up.railway.app/mcp` immediately after deployment. `@modelcontextprotocol/sdk`'s `WebStandardStreamableHTTPServerTransport` calls `crypto.randomUUID()` on the global `crypto` object (`globalThis.crypto`), which is available by default in Node 20+/22 (local machine) but undefined on `globalThis` in older Node 18 containers when `"engines"` is not pinned.
+- **Fix / workaround**: Added `if (!globalThis.crypto) { (globalThis as any).crypto = crypto.webcrypto; }` in `src/app.ts` and pinned `"engines": { "node": ">=20.0.0" }` in `package.json`.
+- **Suggested change to Chord / docs / API**: Remind builders deploying TypeScript MCP servers with `@modelcontextprotocol/sdk` to set `"engines": { "node": ">=20.0.0" }` or polyfill `globalThis.crypto = crypto.webcrypto`.
+
+
