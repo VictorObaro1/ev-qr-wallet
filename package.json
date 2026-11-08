@@ -1,0 +1,37 @@
+{
+  "name": "ev-qr-wallet",
+  "version": "1.0.0",
+  "description": "EV-QR-Wallet Swap-Pass Agent Backend, MCP Facade, and Simulators (Chord Build Exercise)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/src/index.js",
+    "build": "tsc",
+    "test": "vitest run",
+    "mock-pay": "tsx scripts/mock-pay.ts",
+    "station-scan": "tsx scripts/station-scan.ts",
+    "seed": "tsx scripts/seed.ts",
+    "demo": "tsx scripts/demo-walkthrough.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.10.2",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.3",
+    "pg-mem": "^3.0.5",
+    "qrcode": "^1.5.4",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.4",
+    "@types/pg": "^8.11.11",
+    "@types/qrcode": "^1.5.5",
+    "supertest": "^7.0.0",
+    "@types/supertest": "^6.0.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.6"
+  }
+}
