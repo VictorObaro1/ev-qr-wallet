@@ -14,6 +14,7 @@
     "test": "vitest run",
     "mock-pay": "tsx scripts/mock-pay.ts",
     "station-scan": "tsx scripts/station-scan.ts",
+    "mcp": "tsx scripts/mcp-call.ts",
     "seed": "tsx scripts/seed.ts",
     "demo": "tsx scripts/demo-walkthrough.ts"
   },
