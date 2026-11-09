@@ -27,12 +27,14 @@ Always call `get_order_status({ order_id })` before making any statement about a
 ---
 
 ## Case 3: `status === "AMOUNT_MISMATCH"`
-- **Meaning**: The rider transferred the wrong amount (`amount_paid_ngn !== amount_ngn`, e.g. paid ₦1,000 instead of ₦1,500).
+- **Meaning**: The rider transferred the wrong amount (`amount_paid_ngn !== amount_ngn`, e.g. paid ₦1,000 instead of ₦1,500 or ₦2,250).
 - **Rule**: **NEVER issue a pass on `AMOUNT_MISMATCH`.**
+- **CRITICAL CHORD RULE**: **Do NOT call `handover_to_human` on the same turn where you report `AMOUNT_MISMATCH`**, because calling `handover_to_human` replaces your text explanation with `"One moment — connecting you with a teammate."` and hides the payment discrepancy from the rider!
 - **What to do**:
-  1. Explain the exact discrepancy: *"We received **₦<amount_paid_ngn>** for order `<order_id>`, but the required amount for `<passes_purchased>` passes was **₦<amount_ngn>**."*
+  1. Send a normal text reply explaining the exact discrepancy: *"We received **₦<amount_paid_ngn>** for order `<order_id>`, but the required amount for `<passes_purchased>` passes was **₦<amount_ngn>**."*
   2. Explain that passes cannot be issued automatically when the payment amount does not match.
-  3. Immediately escalate to a human operator (follow `references/escalation.md`) including `rider_id`, `order_id`, expected `₦<amount_ngn>`, and paid `₦<amount_paid_ngn>`.
+  3. Include the structured **Escalation Summary Block** (see `references/escalation.md`) with `rider_id`, `order_id`, expected `₦<amount_ngn>`, and paid `₦<amount_paid_ngn>`.
+  4. Ask the rider to reply **"human"** (or **"connect me"**) to transfer the chat to a human operator, and call `handover_to_human` on that next turn.
 
 ---
 
@@ -49,10 +51,12 @@ Always call `get_order_status({ order_id })` before making any statement about a
 ## Case 5: `status === "EXPIRED"` with `amount_paid_ngn > 0` (Late Payment After Expiry)
 - **Meaning**: The transfer window expired first, and the rider's bank transfer of `₦<amount_paid_ngn>` arrived **after** expiry.
 - **Rule**: **Automatic late-payment recovery is not built; NEVER issue a pass automatically on an expired order.**
+- **CRITICAL CHORD RULE**: **Do NOT call `handover_to_human` on the same turn where you report a late payment**, or your explanation will be replaced by `"One moment — connecting you with a teammate."`
 - **What to do**:
-  1. Acknowledge that we see their late transfer of **₦<amount_paid_ngn>** on expired order `<order_id>`.
+  1. Send a normal text reply acknowledging that we see their late transfer of **₦<amount_paid_ngn>** on expired order `<order_id>`.
   2. Explain that because the transfer arrived after the 30-minute payment window expired, a pass cannot be issued automatically by the bot.
-  3. Immediately escalate to a human support operator (follow `references/escalation.md`) with `rider_id`, `order_id`, and `amount_paid_ngn` so finance/support can manually reconcile or refund it.
+  3. Include the structured **Escalation Summary Block** (follow `references/escalation.md`) with `rider_id`, `order_id`, and `amount_paid_ngn` so finance/support can manually reconcile or refund it.
+  4. Ask the rider to reply **"human"** (or **"connect me"**) to transfer to a support operator, and call `handover_to_human` on that next turn.
 
 ---
 

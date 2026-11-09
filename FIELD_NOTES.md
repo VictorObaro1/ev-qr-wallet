@@ -85,6 +85,17 @@ This document records real technical issues discovered and resolved while design
   2. When the agent itself escalates on a domain rule (e.g., `RDR-0003` suspended rider or `AMOUNT_MISMATCH`), the agent includes the full Escalation Summary directly in its synchronous `agent` reply *before* handoff so the customer sees the explanation in Test Chat.
 - **Suggested change to Chord / docs / API**: Connect the in-browser Test Chat simulator widget to `GET /v1/threads/{id}/events` (or poll `/v1/threads/{id}/turns`) so that `system` handoff notices (`"One moment — connecting you with a teammate."`) and `human_operator` replies sent from the Operator Console render live inside the Test Chat customer window.
 
+---
+
+### Problem 10: Calling `handover_to_human` on the Same Turn as `get_order_status` Suppresses the Agent's `AMOUNT_MISMATCH` Explanation
+- **What happened**: After simulating an underpayment (`npm run mock-pay ORD-B12FD2ED54 1000` on a `₦2,250` order, setting `status: 'AMOUNT_MISMATCH'`), the customer typed `"paid"` and `"I have paid"` in Test Chat. Instead of displaying the agent's explanation of the `₦1,000` vs `₦2,250` mismatch, Test Chat showed `"No reply yet. If someone has taken over in Chord, their reply will appear here."` while the Operator Thread View showed `TestMate: "One moment — connecting you with a teammate."`
+- **How I found the cause**: Checked Chord's [Escalation rules documentation](https://api.chordhq.xyz/docs/escalation-rules/) (Section "How a handoff happens") and our skill instructions (`SKILL.md` / `references/payment-problems.md`). Because our skill originally instructed the agent on `AMOUNT_MISMATCH` to *"Escalate immediately to a human operator"*, the LLM called `get_order_status(ORD-B12FD2ED54)` and `handover_to_human` **in the same turn**. When `handover_to_human` is invoked during a turn, Chord intercepts the turn and replaces the LLM's text response with the static handoff notice `"One moment — connecting you with a teammate."` (which, per Problem 9, does not render in the Test Chat customer pane).
+- **Fix / workaround**: Updated `ridepay-swap-pass/SKILL.md`, `references/payment-problems.md`, and `references/escalation.md` to enforce a **Two-Step "Explain First, Hand Off Second" Escalation Rule**:
+  1. **Turn 1**: When `get_order_status` returns `AMOUNT_MISMATCH` (or `EXPIRED` with `amount_paid_ngn > 0`, or `verify_rider` returns `SUSPENDED`), the agent **must not** call `handover_to_human` on that turn. Instead, it sends a normal text reply explaining the exact discrepancy (`₦1,000` received vs `₦2,250` required) along with the structured **Escalation Summary Block**, and asks the rider to reply `"human"` or `"connect me"` to transfer to a support operator.
+  2. **Turn 2**: When the rider replies confirming they want a human operator, the agent calls `handover_to_human`.
+- **Suggested change to Chord / docs / API**: When a teammate calls `handover_to_human(reason)` and also emits explanatory text in the same assistant turn, deliver the assistant's explanatory text to the user *first* before appending `"One moment — connecting you with a teammate."` instead of discarding the assistant's text reply.
+
+
 
 
 
