@@ -95,6 +95,17 @@ This document records real technical issues discovered and resolved while design
   2. **Turn 2**: When the rider replies confirming they want a human operator, the agent calls `handover_to_human`.
 - **Suggested change to Chord / docs / API**: When a teammate calls `handover_to_human(reason)` and also emits explanatory text in the same assistant turn, deliver the assistant's explanatory text to the user *first* before appending `"One moment — connecting you with a teammate."` instead of discarding the assistant's text reply.
 
+---
+
+### Problem 11: LLM Assuming Previous Balance Was "Wrong" When `get_pass_balance` Drops to `0` After an Out-of-Band Station Scan
+- **What happened**: The rider checked their balance on `RDR-0002` at `05:07 PM` (`total_remaining: 1`, `active_passes: [{ pass_id: "h8CLpZsFrHj7STb2tSTxMA", remaining_uses: 1 }]`). Then the rider ran `npm run station-scan RPP1.h8CLpZsFrHj7STb2tSTxMA.yqHpN3MM3wPKBPpay9jr0A` at `STN-LAGOS-01` (consuming the last swap -> `remaining: 0`, `status: 'EXHAUSTED'`) and asked `"How many left"` at `05:10 PM`. Because `get_pass_balance` only returned `active_passes: []` and `total_remaining: 0` with no record of the exhausted pass or station redemption, the LLM assumed its own `05:07 PM` reply had hallucinated the pass and told the user: *"There are no active passes on this account. The pass details I showed earlier were wrong."*
+- **How I found the cause**: Inspecting the `get_pass_balance` query in `src/services/ridepay.ts` (`WHERE status = 'ACTIVE' AND remaining > 0`). Once the final swap on a pass is redeemed via `POST /v1/passes/redeem`, the pass transitions to `EXHAUSTED` (`remaining = 0`) and disappears from `active_passes`. Without visibility into `exhausted_passes` or `recent_redemptions`, the LLM had no way to know an out-of-band physical station scan had just occurred.
+- **Fix / workaround**:
+  1. Enriched `get_pass_balance` in `src/services/ridepay.ts` to also return `exhausted_passes` (`pass_id`, `total_uses`, `remaining_uses: 0`, `status: 'EXHAUSTED'`) and `recent_redemptions` (`pass_id`, `station_id`, `scan_id`, `result`, `redeemed_at` in Lagos WAT) joined from the `redemptions` table.
+  2. Updated `ridepay-swap-pass/SKILL.md` (Step 5) to explicitly instruct the agent that decreases in `total_remaining` are caused by physical station scans (`recent_redemptions`), and **never** to claim its earlier balance reading was "wrong". Also added a rule in Step 1 not to flag differences between the Test Chat simulator profile name (`"John"`) and the database `display_name`.
+- **Suggested change to Chord / docs / API**: In the exercise spec for `get_pass_balance`, include `exhausted_passes` or `recent_redemptions` alongside `active_passes` so the conversational agent has full observability when a pass transitions from `1` remaining swap to `0` (`EXHAUSTED`) via the station REST endpoint.
+
+
 
 
 

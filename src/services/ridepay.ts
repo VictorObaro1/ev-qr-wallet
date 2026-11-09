@@ -70,10 +70,27 @@ export interface ActivePassSummary {
   expires_at: string;
 }
 
+export interface ExhaustedPassSummary {
+  pass_id: string;
+  total_uses: number;
+  remaining_uses: number;
+  status: 'EXHAUSTED';
+}
+
+export interface RecentRedemptionSummary {
+  pass_id: string;
+  station_id: string;
+  scan_id: string;
+  result: string;
+  redeemed_at: string;
+}
+
 export interface GetPassBalanceOutput {
   rider_id: string;
   active_passes: ActivePassSummary[];
   total_remaining: number;
+  exhausted_passes?: ExhaustedPassSummary[];
+  recent_redemptions?: RecentRedemptionSummary[];
 }
 
 export type RedeemResultCode = 'OK' | 'EXHAUSTED' | 'EXPIRED' | 'INVALID' | 'REVOKED';
@@ -593,10 +610,45 @@ export class RidePayService {
 
     const totalRemaining = activePasses.reduce((sum, p) => sum + p.remaining_uses, 0);
 
+    const exhaustedRes = await this.pool.query(
+      `SELECT pass_id, total_uses, remaining
+       FROM passes
+       WHERE rider_id = $1 AND (status = 'EXHAUSTED' OR remaining = 0)
+       ORDER BY created_at DESC`,
+      [normalizedRiderId]
+    );
+
+    const exhaustedPasses: ExhaustedPassSummary[] = exhaustedRes.rows.map((row) => ({
+      pass_id: row.pass_id,
+      total_uses: Number(row.total_uses),
+      remaining_uses: Number(row.remaining),
+      status: 'EXHAUSTED',
+    }));
+
+    const redemptionsRes = await this.pool.query(
+      `SELECT r.pass_id, r.station_id, r.scan_id, r.result, r.created_at
+       FROM redemptions r
+       INNER JOIN passes p ON r.pass_id = p.pass_id
+       WHERE p.rider_id = $1 AND r.result = 'OK'
+       ORDER BY r.created_at DESC
+       LIMIT 5`,
+      [normalizedRiderId]
+    );
+
+    const recentRedemptions: RecentRedemptionSummary[] = redemptionsRes.rows.map((row) => ({
+      pass_id: row.pass_id,
+      station_id: row.station_id,
+      scan_id: row.scan_id,
+      result: row.result,
+      redeemed_at: toLagosIsoString(row.created_at),
+    }));
+
     return {
       rider_id: normalizedRiderId,
       active_passes: activePasses,
       total_remaining: totalRemaining,
+      exhausted_passes: exhaustedPasses,
+      recent_redemptions: recentRedemptions,
     };
   }
 
