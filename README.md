@@ -2,6 +2,15 @@
 
 End-to-end WhatsApp EV battery swap-pass purchasing and station redemption system built for the Chord build exercise.
 
+- **Live Deployment (Railway)**: `https://ev-qr-wallet-production.up.railway.app`
+- **Health Endpoint**: `https://ev-qr-wallet-production.up.railway.app/health`
+- **MCP Server Endpoint**: `https://ev-qr-wallet-production.up.railway.app/mcp`
+- **Deliverables**:
+  - [PRD.md](file:///c:/Dev/EV-QR-Wallet/PRD.md) — Product Requirements Document
+  - [ridepay-swap-pass/SKILL.md](file:///c:/Dev/EV-QR-Wallet/ridepay-swap-pass/SKILL.md) — Chord Teammate Skill & References
+  - [FIELD_NOTES.md](file:///c:/Dev/EV-QR-Wallet/FIELD_NOTES.md) — Real Engineering & Integration Field Notes Log (8 documented issues & fixes)
+  - [GO_LIVE_NOTE.md](file:///c:/Dev/EV-QR-Wallet/GO_LIVE_NOTE.md) — Owner-Readable Production Readiness Note
+
 ## Architecture Overview
 
 ```text
@@ -75,6 +84,17 @@ The server starts on `http://localhost:3000`:
 | `RDR-0002` | Chinedu Okafor | `ACTIVE` | Secondary active rider |
 | `RDR-0003` | Sadiq Bello | `SUSPENDED` | Tests `RIDER_SUSPENDED` human escalation |
 | `RDR-9999` | *(Not in DB)* | — | Tests `exists: false` retry & escalation |
+
+### Calling MCP Tools Directly (`npm run mcp`)
+You can invoke any of the 4 MCP facade tools directly from your terminal against the live server:
+
+```powershell
+npm run mcp tools/list
+npm run mcp verify_rider RDR-0001
+npm run mcp create_swap_pass_order RDR-0001 2
+npm run mcp get_order_status ORD-0001
+npm run mcp get_pass_balance RDR-0001
+```
 
 ### Simulating Payments (`npm run mock-pay`)
 `ORD-0001` (`RDR-0001`, 2 passes = `₦1,500`) is pre-seeded out of the box, or you can pass any `ORD-XXXX` created by the agent:
