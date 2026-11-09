@@ -50,4 +50,17 @@ This document records real technical issues discovered and resolved while design
 - **Fix / workaround**: Added `if (!globalThis.crypto) { (globalThis as any).crypto = crypto.webcrypto; }` in `src/app.ts` and pinned `"engines": { "node": ">=20.0.0" }` in `package.json`.
 - **Suggested change to Chord / docs / API**: Remind builders deploying TypeScript MCP servers with `@modelcontextprotocol/sdk` to set `"engines": { "node": ">=20.0.0" }` or polyfill `globalThis.crypto = crypto.webcrypto`.
 
+---
+
+### Problem 7: Chord MCP Probe Returning `401 UNAUTHORIZED` ("Missing or invalid Authorization Bearer header") When Server is Disabled or `auth_type` is Omitted
+- **What happened**: Probing the MCP server from Chord returned: `MCP server error: MCP server returned HTTP 401: {"error":{"code":"UNAUTHORIZED","message":"Missing or invalid Authorization Bearer [REDACTED] for MCP server.","retryable":false}}`.
+- **How I found the cause**: Checked the exact 401 message from `src/mcp/facade.ts` (which only fires when no `Authorization: Bearer ...` header is sent at all) and cross-referenced Chord's official MCP docs (`https://api.chordhq.xyz/docs/mcp-servers/`), Section 1 & Section 3:
+  1. `auth_type` defaults to `"none"` unless explicitly set to `"bearer"`.
+  2. Section 3 states: *"Keep a static-auth server enabled while probing: a disabled server or workspace does not supply its stored bearer/API-key credential to these probes."*
+- **Fix / workaround**:
+  1. Ensure the MCP server in Chord has `"auth_type": "bearer"` and `"auth_token": "mcp_live_token_ridepay_2026"`.
+  2. Follow Chord's Section 2 -> Section 3 order: set the teammate's `set_mcp_server_ids` first, **enable the MCP server (`"enabled": true`)**, and *then* run tool discovery (`/tools`) and health check (`/health`), followed by setting `enabled_tools`.
+- **Suggested change to Chord / docs / API**: When a user triggers `/tools` or `/health` on a disabled static-auth MCP server (`enabled: false`), return a `409 FAILED_PRECONDITION` ("Enable the server before probing static credentials") or include the stored `auth_token` on admin probes so builders don't see a misleading remote `401 Missing Authorization header` error.
+
+
 
