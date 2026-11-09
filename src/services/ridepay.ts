@@ -629,7 +629,7 @@ export class RidePayService {
       `SELECT r.pass_id, r.station_id, r.scan_id, r.result, r.created_at
        FROM redemptions r
        INNER JOIN passes p ON r.pass_id = p.pass_id
-       WHERE p.rider_id = $1 AND r.result = 'OK'
+       WHERE p.rider_id = $1
        ORDER BY r.created_at DESC
        LIMIT 5`,
       [normalizedRiderId]

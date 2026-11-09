@@ -176,7 +176,7 @@ export function buildMcpServer(ridepay: RidePayService): McpServer {
   // 6.4 get_pass_balance
   server.tool(
     'get_pass_balance',
-    'Get all active swap passes and the total remaining swaps for a rider.',
+    'Get all active swap passes, total remaining swaps, exhausted passes, and the last 5 station scans (station_id, scan_id, result, redeemed_at timestamp) for a rider.',
     {
       rider_id: z.string().min(1).describe('Rider ID, e.g. RDR-0001'),
     },
@@ -194,6 +194,19 @@ export function buildMcpServer(ridepay: RidePayService): McpServer {
             expires_at: p.expires_at,
           })),
           total_remaining: result.total_remaining,
+          exhausted_passes: (result.exhausted_passes ?? []).map((p) => ({
+            pass_id: p.pass_id,
+            total_uses: p.total_uses,
+            remaining_uses: p.remaining_uses,
+            status: p.status,
+          })),
+          recent_redemptions: (result.recent_redemptions ?? []).map((r) => ({
+            pass_id: r.pass_id,
+            station_id: r.station_id,
+            scan_id: r.scan_id,
+            result: r.result,
+            redeemed_at: r.redeemed_at,
+          })),
         });
       } catch (err) {
         return formatToolError(err);
