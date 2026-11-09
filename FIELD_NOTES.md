@@ -62,5 +62,14 @@ This document records real technical issues discovered and resolved while design
   2. Follow Chord's Section 2 -> Section 3 order: set the teammate's `set_mcp_server_ids` first, **enable the MCP server (`"enabled": true`)**, and *then* run tool discovery (`/tools`) and health check (`/health`), followed by setting `enabled_tools`.
 - **Suggested change to Chord / docs / API**: When a user triggers `/tools` or `/health` on a disabled static-auth MCP server (`enabled: false`), return a `409 FAILED_PRECONDITION` ("Enable the server before probing static credentials") or include the stored `auth_token` on admin probes so builders don't see a misleading remote `401 Missing Authorization header` error.
 
+---
+
+### Problem 8: Chord Test Chat Returning `"The agent didn't answer (Chord returned 502). Try sending again."`
+- **What happened**: On the first message (`"I need swap pass"`) in the Chord Test Chat simulator (`Vendos · TestMate`), the chat UI returned: `The agent didn't answer (Chord returned 502). Try sending again.` Sending `"hello"` after enabling and verifying the MCP server succeeded immediately (`"Hello John! I'd be happy to help you get swap passes. To start, please send me your Rider ID (for example, RDR-0001) so I can verify your account."`).
+- **How I found the cause**: Correlating the timestamp of the 502 (`02:25 PM`) with the MCP server configuration state before enabling the MCP server (`02:39 PM`). When a teammate has an attached MCP server whose tool discovery/connection fails at turn startup (or experiences a cold-start timeout), Chord's turn orchestrator surfaces a generic `502 Bad Gateway` to the chat simulator rather than degrading gracefully or surfacing the upstream MCP error reason.
+- **Fix / workaround**: Verified the MCP server was enabled (`enabled: true`) with valid `bearer` `auth_token` and healthy `/health` probe; subsequent turns in the same thread succeeded immediately.
+- **Suggested change to Chord / docs / API**: In the Test Chat simulator UI (for admins/builders), include a diagnostic detail on `502` banners (e.g., `"502: Upstream MCP server <name> returned 401/timeout during tool initialization"`) so builders immediately know whether the 502 came from the LLM provider or the attached MCP server.
+
+
 
 
