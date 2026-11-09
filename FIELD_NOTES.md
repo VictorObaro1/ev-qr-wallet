@@ -70,6 +70,22 @@ This document records real technical issues discovered and resolved while design
 - **Fix / workaround**: Verified the MCP server was enabled (`enabled: true`) with valid `bearer` `auth_token` and healthy `/health` probe; subsequent turns in the same thread succeeded immediately.
 - **Suggested change to Chord / docs / API**: In the Test Chat simulator UI (for admins/builders), include a diagnostic detail on `502` banners (e.g., `"502: Upstream MCP server <name> returned 401/timeout during tool initialization"`) so builders immediately know whether the 502 came from the LLM provider or the attached MCP server.
 
+---
+
+### Problem 9: Operator Replies & Handoff Banners Not Delivered to Customer in Chord "Test Chat" Simulator During Human Takeover
+- **What happened**:
+  1. When the customer ("John") typed `"speak to someone"` (`04:00 PM`), the thread transitioned to `human_active` and the Operator Thread View showed `TestMate: "One moment — connecting you with a teammate."`
+  2. When the human operator took over and sent `"Hello! John no Promo for now we'll inform you when we have. Thank you for understanding."`, the message was saved in the Operator Thread View (`GET /v1/threads/{id}/turns`), **but never arrived in John's "Test chat" simulator window**.
+  3. While in `human_active`, John's follow-up messages (`"hey!"` at `04:01 PM`, `"Hello"` at `04:04 PM`) received no response in the Test Chat window (turn-gated with `agent_invoked: false`) while showing repeated `"One moment — connecting you with a teammate."` banners in the operator view, until control was handed back to the agent (`04:07 PM`: `"I want to purchase"` -> agent replied `"Happy to help, Chinedu! Your account RDR-0002 is active..."`).
+- **How I found the cause**: Comparing the Operator Thread View screenshot against the Test Chat simulator screenshot and reviewing Chord's [Threads and human handoff documentation](https://api.chordhq.xyz/docs/threads/) (Sections 4, 5, and 7):
+  - Section 7 notes that `POST /v1/threads/{id}/messages` persists the `human_operator` turn on the thread first and then dispatches it over the thread's outbound channel (`channel_id`).
+  - However, the in-browser **Test Chat** simulator (`"This is a test chat. Messages go to Vendos but never reach WhatsApp"`) only renders synchronous `agent` replies returned directly from the customer's turn request. It does not subscribe to the thread SSE stream (`GET /v1/threads/{id}/events`) or poll `GET /v1/threads/{id}/turns` to display asynchronous `human_operator` replies or the `"One moment — connecting you with a teammate."` system handoff message.
+- **Fix / workaround**:
+  1. For the demo recording, show **both** panes side-by-side (or switch to the Operator Thread Inbox view during human handoff) so the viewer sees the `human_active` state, the `"One moment — connecting you with a teammate."` transition, and the operator's persisted reply in the thread history, then click **Hand back** to return to `agent_active` so the customer can continue in Test Chat.
+  2. When the agent itself escalates on a domain rule (e.g., `RDR-0003` suspended rider or `AMOUNT_MISMATCH`), the agent includes the full Escalation Summary directly in its synchronous `agent` reply *before* handoff so the customer sees the explanation in Test Chat.
+- **Suggested change to Chord / docs / API**: Connect the in-browser Test Chat simulator widget to `GET /v1/threads/{id}/events` (or poll `/v1/threads/{id}/turns`) so that `system` handoff notices (`"One moment — connecting you with a teammate."`) and `human_operator` replies sent from the Operator Console render live inside the Test Chat customer window.
+
+
 
 
 
