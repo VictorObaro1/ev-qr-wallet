@@ -8,7 +8,7 @@ End-to-end WhatsApp EV battery swap-pass purchasing and station redemption syste
 - **Deliverables**:
   - [PRD.md](file:///c:/Dev/EV-QR-Wallet/PRD.md) — Product Requirements Document
   - [ridepay-swap-pass/SKILL.md](file:///c:/Dev/EV-QR-Wallet/ridepay-swap-pass/SKILL.md) — Chord Teammate Skill & References
-  - [FIELD_NOTES.md](file:///c:/Dev/EV-QR-Wallet/FIELD_NOTES.md) — Real Engineering & Integration Field Notes Log (8 documented issues & fixes)
+  - [FIELD_NOTES.md](file:///c:/Dev/EV-QR-Wallet/FIELD_NOTES.md) — Real Engineering & Integration Field Notes Log (11 documented issues & fixes)
   - [GO_LIVE_NOTE.md](file:///c:/Dev/EV-QR-Wallet/GO_LIVE_NOTE.md) — Owner-Readable Production Readiness Note
 
 ## Architecture Overview
@@ -42,6 +42,8 @@ Station Simulator (npm run station-scan) ---> POST /v1/passes/redeem (REST, Bear
 - [src/app.ts](file:///c:/Dev/EV-QR-Wallet/src/app.ts) & [src/index.ts](file:///c:/Dev/EV-QR-Wallet/src/index.ts) — Express HTTP server.
 - [scripts/mock-pay.ts](file:///c:/Dev/EV-QR-Wallet/scripts/mock-pay.ts) — Builder CLI tool to simulate exact bank transfers, wrong-amount transfers (`AMOUNT_MISMATCH`), expired transfers, and late payments after expiry.
 - [scripts/station-scan.ts](file:///c:/Dev/EV-QR-Wallet/scripts/station-scan.ts) — Builder CLI tool simulating the swap-station QR scanner (`POST /v1/passes/redeem`).
+- [scripts/mcp-call.ts](file:///c:/Dev/EV-QR-Wallet/scripts/mcp-call.ts) — Builder CLI tool to invoke MCP tools (`verify_rider`, `create_swap_pass_order`, `get_order_status`, `get_pass_balance`) directly against local or live `/mcp`.
+- [scripts/demo-walkthrough.ts](file:///c:/Dev/EV-QR-Wallet/scripts/demo-walkthrough.ts) — Automated end-to-end walkthrough of all 3 demo scenarios (`npm run demo`).
 - [ridepay-swap-pass/SKILL.md](file:///c:/Dev/EV-QR-Wallet/ridepay-swap-pass/SKILL.md) — Chord skill package and reference guides (`pricing-and-limits.md`, `payment-problems.md`, `escalation.md`).
 - [GO_LIVE_NOTE.md](file:///c:/Dev/EV-QR-Wallet/GO_LIVE_NOTE.md) — Owner-readable production readiness note.
 - [FIELD_NOTES.md](file:///c:/Dev/EV-QR-Wallet/FIELD_NOTES.md) — Engineering field notes log.
@@ -134,12 +136,11 @@ npm run station-scan RPP1.fake_pass_id.bad_mac
 
 ## Connecting to Chord
 
-1. Expose your local server over public HTTPS (e.g., `ngrok http 3000` or Cloudflare Tunnel, or deploy to Railway/Render/Fly.io) and set `PUBLIC_BASE_URL=https://<your-public-domain>` in `.env`.
-2. Upload the skill package in [ridepay-swap-pass/](file:///c:/Dev/EV-QR-Wallet/ridepay-swap-pass/SKILL.md) to your Chord teammate.
+1. Deploy the server over public HTTPS (live at `https://ev-qr-wallet-production.up.railway.app`) and set `PUBLIC_BASE_URL=https://ev-qr-wallet-production.up.railway.app` in `.env`.
+2. Upload the skill package in [ridepay-swap-pass/](file:///c:/Dev/EV-QR-Wallet/ridepay-swap-pass/SKILL.md) (`SKILL.md` and `references/`) to your Chord teammate and publish the skill.
 3. Follow the Chord MCP registration sequence:
-   - Register the MCP server URL (`https://<your-public-domain>/mcp`) as **disabled** initially.
-   - Put `MCP_BEARER_TOKEN` in `auth_token` (never in custom headers).
-   - Run tool discovery and health check (confirming `status: "ok"` in the JSON response body).
-   - Set `enabled_tools` explicitly to `["verify_rider", "create_swap_pass_order", "get_order_status", "get_pass_balance"]`.
+   - Register the MCP server URL (`https://ev-qr-wallet-production.up.railway.app/mcp`) with `"auth_type": "bearer"` and `"auth_token": "<MCP_BEARER_TOKEN>"` (never in custom headers).
    - Set the teammate's `mcp_server_ids` explicitly to `[<mcp_server_id>]`.
-   - Enable the MCP server.
+   - Enable the MCP server (`"enabled": true`) so Chord supplies its stored `auth_token` during static-auth probes.
+   - Run tool discovery (`/tools`) and health check (`/health`, confirming `status: "ok"` in the JSON response body).
+   - Set `enabled_tools` explicitly to `["verify_rider", "create_swap_pass_order", "get_order_status", "get_pass_balance"]`.

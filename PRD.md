@@ -56,7 +56,7 @@ Prepaid battery-swap operators for electric delivery bikes lose rider time and r
   - *Reason for min 2*: Single-swap purchases do not justify bank-transfer latency; the WhatsApp flow exists for multi-swap prepaid bundles.
   - *Reason for max 10 (₦7,500)*: Caps per-order financial risk over an unauthenticated chat session.
 - **Zero secret leakage**: Never reveal API keys, webhook secrets, HMAC secrets, internal database IDs, or another rider's data.
-- **Escalate rather than guess**: On `AMOUNT_MISMATCH`, late payment after expiry, `RIDER_SUSPENDED`, or persistent API errors, clearly escalate to a human operator with the `rider_id` and `order_id`.
+- **Escalate rather than guess (Two-Step "Explain First, Hand Off Second" Rule)**: On `AMOUNT_MISMATCH`, late payment after expiry, `RIDER_SUSPENDED`, or persistent API errors, the agent first sends a complete text explanation + structured **Escalation Summary Block** (`rider_id`, `order_id`, expected vs. paid amount) and asks the rider to reply `"human"` to transfer, then invokes Chord's `handover_to_human` tool on the next turn (preventing `handover_to_human` from suppressing the explanation message).
 
 ---
 
@@ -122,7 +122,7 @@ No tool ever returns secret keys or raw Paystack objects.
      - If the LLM accidentally reuses an old `idempotency_key` from an already-completed (`PASS_ISSUED`), `EXPIRED`, or `AMOUNT_MISMATCH` order, or if a different `rider_id`/`quantity` is passed with the same key, the backend namespaces/rotates the key so a fresh purchase is not blocked.
   4. Computes `amount_ngn = quantity * SWAP_PRICE_NGN` (`amount_kobo = amount_ngn * 100`).
   5. Calls Paystack test API, stores the row in `swap_orders` with `status = 'PENDING_PAYMENT'` and `expires_at = now() + 30 minutes`.
-- **Output**:
+- **Output** (all timestamps formatted in Lagos Time / WAT `UTC+01:00`):
   ```json
   {
     "order_id": "ORD-...",
@@ -131,7 +131,7 @@ No tool ever returns secret keys or raw Paystack objects.
     "amount_ngn": 1500,
     "bank_name": "Paystack-Titan",
     "account_number": "0000000000",
-    "expires_at": "2026-11-08T01:00:00.000Z",
+    "expires_at": "2026-11-09T17:04:08.122+01:00",
     "status": "PENDING_PAYMENT"
   }
   ```
@@ -153,34 +153,54 @@ No tool ever returns secret keys or raw Paystack objects.
     "amount_ngn": 1500,
     "amount_paid_ngn": 1500,
     "passes_purchased": 2,
-    "expires_at": "2026-11-08T01:00:00.000Z",
-    "pass_id": "p_...",
+    "expires_at": "2026-11-09T17:04:08.122+01:00",
+    "pass_id": "g79nfMLh_3IoVr4JwfZJ1g",
     "qr_payload": "RPP1.<pass_id>.<mac>",
     "qr_image_url": "https://<host>/v1/passes/<pass_id>/qr.png",
     "remaining_uses": 2,
-    "pass_expires_at": "2026-12-08T00:30:00.000Z"
+    "pass_expires_at": "2026-12-09T16:34:08.802+01:00"
   }
   ```
-  *(Note: `pass_id`, `qr_payload`, `qr_image_url`, `remaining_uses`, and `pass_expires_at` are only present when `status === 'PASS_ISSUED'`. `amount_paid_ngn` allows the agent to see the exact discrepancy on `AMOUNT_MISMATCH` or detect when money arrived late on an `EXPIRED` order.)*
+  *(Note: Once `status === 'PASS_ISSUED'`, the 30-minute transfer deadline `expires_at` is omitted and replaced by the 30-day `pass_expires_at` (`+01:00` WAT) so the agent never confuses transfer expiry with pass validity. `pass_id`, `qr_payload`, `qr_image_url`, `remaining_uses`, and `pass_expires_at` are only present when `status === 'PASS_ISSUED'`. `amount_paid_ngn` allows the agent to report the exact discrepancy on `AMOUNT_MISMATCH` or detect when money arrived late on an `EXPIRED` order.)*
 
 ### 6.4 `get_pass_balance`
 - **Input**: `{ "rider_id": string }`
-- **Behaviour**: Validates `rider_id` exists, marks any passes where `expires_at <= now()` as `EXPIRED`, and returns all active passes (`status = 'ACTIVE' AND remaining > 0 AND expires_at > now()`) plus the sum of remaining swaps.
+- **Behaviour**: Validates `rider_id` exists, marks any passes where `expires_at <= now()` as `EXPIRED`, and returns:
+  1. All active passes (`status = 'ACTIVE' AND remaining > 0 AND expires_at > now()`) and `total_remaining`.
+  2. `exhausted_passes` (`status = 'EXHAUSTED' OR remaining = 0`) so the agent knows when a previously active pass was fully consumed.
+  3. `recent_redemptions` — the **last 5 station scans** (`pass_id`, `station_id`, `scan_id`, `result`, and `redeemed_at` in Lagos WAT `+01:00`) joined from `redemptions`.
 - **Output**:
   ```json
   {
     "rider_id": "RDR-0001",
     "active_passes": [
       {
-        "pass_id": " in base64url",
+        "pass_id": "g79nfMLh_3IoVr4JwfZJ1g",
         "qr_payload": "RPP1.<pass_id>.<mac>",
         "qr_image_url": "https://<host>/v1/passes/<pass_id>/qr.png",
         "remaining_uses": 1,
         "total_uses": 2,
-        "expires_at": "2026-12-08T00:30:00.000Z"
+        "expires_at": "2026-12-09T16:34:08.802+01:00"
       }
     ],
-    "total_remaining": 1
+    "total_remaining": 1,
+    "exhausted_passes": [
+      {
+        "pass_id": "42RzQQdappyT784BuJsA1g",
+        "total_uses": 2,
+        "remaining_uses": 0,
+        "status": "EXHAUSTED"
+      }
+    ],
+    "recent_redemptions": [
+      {
+        "pass_id": "42RzQQdappyT784BuJsA1g",
+        "station_id": "STN-LAGOS-01",
+        "scan_id": "SCAN-ED565EE0",
+        "result": "OK",
+        "redeemed_at": "2026-11-09T17:35:33.678+01:00"
+      }
+    ]
   }
   ```
 
@@ -311,13 +331,12 @@ ridepay-swap-pass/
 - **`references/escalation.md`**: When to hand off to a human operator and the exact context to collect and display (`rider_id`, `order_id`, expected vs. paid amount, issue summary).
 
 ### Chord Setup Protocol
-1. Register the MCP server in Chord as **disabled** initially (`https://<public-url>/mcp`).
-2. Put `MCP_BEARER_TOKEN` in `auth_token` (**never** in custom headers, which are world-readable via `mcp:read`).
-3. Run tool discovery and verify health check (inspect the response body `status` field even on HTTP 200).
-4. Set `enabled_tools` explicitly to `["verify_rider", "create_swap_pass_order", "get_order_status", "get_pass_balance"]`.
-5. Set the teammate's `mcp_server_ids` explicitly to `[<server_id>]` (an empty array in Chord attaches all enabled workspace servers).
-6. Enable the MCP server.
-7. Required API key permissions: `mcp:create`, `mcp:read`, `mcp:manage`, `teammate:read`, `teammate:update`.
+1. Register the MCP server in Chord (`https://ev-qr-wallet-production.up.railway.app/mcp`) with `"auth_type": "bearer"` and `"auth_token": "<MCP_BEARER_TOKEN>"` (**never** in custom headers, which are world-readable via `mcp:read`).
+2. Set the teammate's `mcp_server_ids` explicitly to `[<server_id>]` (an empty array in Chord attaches all enabled workspace servers).
+3. Enable the MCP server (`"enabled": true`) before probing—as documented in Chord's MCP guide (Section 3), a disabled static-auth server does not send its stored `auth_token` during `/tools` or `/health` probes.
+4. Run tool discovery (`/tools`) and verify health check (`/health`, inspecting the response body `status` field even on HTTP 200).
+5. Set `enabled_tools` explicitly to `["verify_rider", "create_swap_pass_order", "get_order_status", "get_pass_balance"]`.
+6. Required API key permissions: `mcp:create`, `mcp:read`, `mcp:manage`, `teammate:read`, `teammate:update`.
 
 ---
 
