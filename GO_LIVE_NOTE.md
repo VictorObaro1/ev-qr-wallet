@@ -1,38 +1,37 @@
-# Go-Live Note: RidePay Swap-Pass WhatsApp Agent
+# Go-Live Note: RidePay WhatsApp Swap-Pass Assistant
 
-**Audience**: Fleet Operations & Business Owner  
-**Scope**: Pre-launch readiness assessment for moving `ridepay-swap-pass` from the Paystack Test / Simulator environment to production EV riders in Lagos.
+**For**: RidePay Business Owner & Operations Lead  
+**Purpose**: What this WhatsApp assistant does today, its honest limits, and what we must put in place before launching to real riders in Lagos.
 
 ---
 
-## 1. What the Agent Does and Does Not Do
+## 1. What the Assistant Does (and Does Not Do)
 - **What it does**:
-  - Verifies active riders (`verify_rider`), quotes bundle pricing (`2–10` passes at `₦750` each), and creates a one-time Paystack bank-transfer order (`create_swap_pass_order`).
-  - Confirms payment strictly via server-side status (`get_order_status` backed by HMAC-SHA512 Paystack webhooks and Paystack Verify API—never trusting *"I paid"*).
-  - Issues a cryptographically signed QR pass (`RPP1.<pass_id>.<mac>`) exactly once per paid order and lets riders check their remaining swaps (`get_pass_balance`).
-  - Validates and atomically decrements swap passes at the station via a separate REST endpoint (`POST /v1/passes/redeem`) with per-scan idempotency (`scan_id`).
-- **What it deliberately does NOT do**:
-  - Cannot spend/decrement a rider's passes from chat (station redemption is isolated to REST).
-  - Does not issue automatic refunds, partial-payment credits, or late-payment passes without human review.
+  - Checks that a rider's account is active, quotes the price for a bundle of 2 to 10 battery swap passes (`₦750` per swap), and gives them a bank account number to pay into via Paystack.
+  - Checks with Paystack in the background before issuing anything—it **never** takes a rider's word when they type *"I have paid"*.
+  - Once exact payment is confirmed, sends the rider a QR code pass on WhatsApp and tracks how many swaps they have left as they scan at stations.
+- **What it does NOT do**:
+  - It cannot send automatic refunds or issue passes when a rider pays the wrong amount or pays after the 30-minute payment window expires. Instead, it flags those cases and hands the chat over to your human support team.
+  - It cannot deduct swaps inside WhatsApp—only the scanner at the swap station can deduct a swap.
 
-## 2. What Must Be True Before Real Customers
-1. **Live Paystack Keys & Dedicated Virtual Accounts**: Replace `sk_test_...` with live `sk_live_...` credentials and enable **Pay with Transfer / Dedicated Virtual Accounts (Titan/Wema)** on the production Paystack merchant account.
-2. **Connected Production WhatsApp Business Number**: Connect the Chord teammate to the verified WhatsApp Business API sender.
-3. **Phone-to-Rider Identity Binding (`chat_sender_id`)**: Bind the rider's verified WhatsApp phone number (`chat_sender_id`) to `riders.rider_id` so a rider cannot type another rider's ID to check their balance or generate orders on their account.
-4. **Station Scanner App Integration**: Provision each physical swap station with a unique `station_id` and scoped `STATION_BEARER_TOKEN` pointing to `POST /v1/passes/redeem`.
-5. **Monitoring & Alerting**: Configure alerts on 5xx webhook errors, `AMOUNT_MISMATCH` events, late payments on expired orders, and Postgres connection saturation.
+## 2. What Must Be Ready Before Real Customers Use It
+1. **Live Paystack Account**: Switch from our test Paystack key to your live Paystack business account with "Pay with Transfer" (dedicated virtual bank accounts) turned on.
+2. **Official WhatsApp Business Number**: Connect the assistant in Chord to your registered company WhatsApp Business phone number.
+3. **Match Phone Numbers to Rider Accounts**: Right now in test mode, anyone can type `RDR-0001`. Before launch, we must lock each Rider ID to that rider's registered WhatsApp phone number so riders can only check or buy passes for their own account.
+4. **Station Scanner Setup**: Give each swap station tablet/scanner its own login token so you can see which station processed every swap.
+5. **Breakage & Payment Alerts**: Set up instant WhatsApp/Slack/email alerts to the Operations Lead if Paystack goes down, if a payment webhook fails, or when a rider is waiting for human support in the Chord Inbox.
 
-## 3. When a Payment Fails, Mismatches, or Arrives Late
-- **Unpaid & Pending (`PENDING_PAYMENT`)**: No pass is issued; the rider is reminded of the account number and 30-minute expiry window.
-- **Wrong Amount Paid (`AMOUNT_MISMATCH`)**: The webhook records `amount_paid_kobo` and locks the order in `AMOUNT_MISMATCH`. No pass is issued. The agent quotes the exact difference (`paid ₦X vs expected ₦Y`) and escalates to **Finance/Support** with the `order_id`.
-- **Late Payment After 30-Minute Expiry (`EXPIRED` with `amount_paid_ngn > 0`)**: The webhook records the late payment amount on the expired order without issuing a pass. The agent detects `amount_paid_ngn > 0` on the expired order and escalates immediately to **Finance/Support** for manual refund or credit.
+## 3. What Happens When a Payment Fails or Goes Wrong
+- **Transfer hasn't arrived yet**: The assistant tells the rider the money hasn't landed yet, reminds them of the account number and 30-minute deadline, and offers to check again in a minute.
+- **Rider pays the wrong amount (e.g., ₦1,000 instead of ₦2,250)**: No pass is issued. The assistant tells the rider the exact difference and hands the conversation to your Finance/Support team in Chord with the Order ID so you can top it up or refund it from the Paystack dashboard.
+- **Rider pays late (after the 30-minute window expires)**: No pass is issued automatically. The assistant sees that money arrived late on an expired order and routes the chat to Finance/Support to confirm and resolve manually.
 
-## 4. The QR Sharing Limit and Chosen Mitigation
-- **The Limit**: A static QR image can be screenshotted and forwarded to another rider. While the server-side Postgres counter guarantees no extra swaps are ever created (`remaining` cannot go below `0`), a static QR alone does not prove which rider is physically at the station.
-- **Chosen Launch Mitigation**:
-  1. **Attendant Screen Verification**: Include the rider's registered `display_name` and bike plate number in the station terminal display upon `POST /v1/passes/redeem` so the station attendant visually confirms the rider.
-  2. **Per-Pass Swap Cooldown**: Enforce a minimum 90-minute cooldown between redemptions on the same `pass_id` (since a single delivery bike cannot deplete a full battery in minutes).
+## 4. Honest Limit: QR Code Sharing (and How We Handle It)
+- **The risk**: A rider could screenshot their QR code and send it to a friend. The system will **never** give away free swaps (once a 2-swap pass is scanned twice, it is empty), but a screenshot alone doesn't prove which rider is standing at the station if a rider claims *"someone else used my pass."*
+- **Practical fix for launch**:
+  1. Show the rider's **registered name and bike plate number** on the station attendant's screen when they scan the QR code.
+  2. Put a **90-minute cooldown** between scans on the same pass (since one delivery bike does not run down a fresh battery in a few minutes).
 
-## 5. Ownership of Support and Refunds
-- **Station Attendants**: Handle physical scan retries (safe due to `scan_id` idempotency) and direct riders with `EXPIRED` or `EXHAUSTED` passes back to WhatsApp.
-- **Central Operations & Finance**: Own all human escalations from Chord (`AMOUNT_MISMATCH`, late payments on expired orders, and `RIDER_SUSPENDED` inquiries) and execute refunds via the Paystack Dashboard.
+## 5. Who Owns What Day-to-Day
+- **Station Attendants**: Scan rider QR codes at the station. If a pass says `0 swaps left` or `Expired`, they direct the rider back to the WhatsApp assistant to buy a new bundle.
+- **Operations / Finance Team**: Watch the Chord Inbox for handed-off chats (wrong amount paid, late transfers, or suspended riders) and handle refunds in the Paystack dashboard.

@@ -1,7 +1,7 @@
 # EV-QR-Wallet Swap-Pass Agent (`ridepay-swap-pass`)
 
 ## Role Preference & Problem Statement
-- **Role Preference**: Forward Deployed Engineer / AI Solutions Engineer (Full-Stack & Agentic Systems)
+- **Role Preference**: Forward-deployed Engineering (and Technical Product Management)
 - **Problem Statement**: **RidePay** operates battery-swap stations for commercial electric delivery bikes in Lagos, Nigeria, where riders currently waste time at stations waiting for staff to manually verify bank transfers before swapping batteries. This WhatsApp agent lets riders buy prepaid swap-pass bundles (2–10 passes) in one chat via Paystack bank transfer, verifies payment server-side via `get_order_status` (never trusting *"I paid"*), and issues a signed QR pass (`RPP1.<pass_id>.<mac>`) that station terminals validate and decrement in seconds. It is worth paying for because it eliminates cash handling, fake transfer alerts, and queue bottlenecks at swap stations while giving the operator kobo-accurate reconciled revenue per swap. Physical swap hardware, live money/NIBSS transfers, self-service refunds, and production rider PII are deliberately left out; the station scanner and bank transfer webhook are simulated against our live Postgres + Paystack Test Mode backend.
 
 ---
