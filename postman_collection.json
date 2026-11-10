@@ -11,11 +11,11 @@
     },
     {
       "key": "mcp_token",
-      "value": "mcp_live_token_ridepay_2026"
+      "value": "YOUR_MCP_BEARER_TOKEN"
     },
     {
       "key": "station_token",
-      "value": "station_live_token_ridepay_2026"
+      "value": "YOUR_STATION_BEARER_TOKEN"
     },
     {
       "key": "paystack_secret",
