@@ -1,15 +1,21 @@
 # EV-QR-Wallet Swap-Pass Agent (`ridepay-swap-pass`)
 
-End-to-end WhatsApp EV battery swap-pass purchasing and station redemption system built for the Chord build exercise.
+## Role Preference & Problem Statement
+- **Role Preference**: Forward Deployed Engineer / AI Solutions Engineer (Full-Stack & Agentic Systems)
+- **Problem Statement**: **RidePay** operates battery-swap stations for commercial electric delivery bikes in Lagos, Nigeria, where riders currently waste time at stations waiting for staff to manually verify bank transfers before swapping batteries. This WhatsApp agent lets riders buy prepaid swap-pass bundles (2–10 passes) in one chat via Paystack bank transfer, verifies payment server-side via `get_order_status` (never trusting *"I paid"*), and issues a signed QR pass (`RPP1.<pass_id>.<mac>`) that station terminals validate and decrement in seconds. It is worth paying for because it eliminates cash handling, fake transfer alerts, and queue bottlenecks at swap stations while giving the operator kobo-accurate reconciled revenue per swap. Physical swap hardware, live money/NIBSS transfers, self-service refunds, and production rider PII are deliberately left out; the station scanner and bank transfer webhook are simulated against our live Postgres + Paystack Test Mode backend.
 
+---
+
+## Live Links & Submission Deliverables
 - **Live Deployment (Railway)**: `https://ev-qr-wallet-production.up.railway.app`
 - **Health Endpoint**: `https://ev-qr-wallet-production.up.railway.app/health`
 - **MCP Server Endpoint**: `https://ev-qr-wallet-production.up.railway.app/mcp`
 - **Deliverables**:
+  - [ridepay-swap-pass/SKILL.md](file:///c:/Dev/EV-QR-Wallet/ridepay-swap-pass/SKILL.md) — Custom Chord Skill & Reference Guides (`pricing-and-limits.md`, `payment-problems.md`, `escalation.md`)
+  - [FIELD_NOTES.md](file:///c:/Dev/EV-QR-Wallet/FIELD_NOTES.md) — Chord Deployment Field Notes
+  - [GO_LIVE_NOTE.md](file:///c:/Dev/EV-QR-Wallet/GO_LIVE_NOTE.md) — Half-Page Go-Live Note for the Business Owner
   - [PRD.md](file:///c:/Dev/EV-QR-Wallet/PRD.md) — Product Requirements Document
-  - [ridepay-swap-pass/SKILL.md](file:///c:/Dev/EV-QR-Wallet/ridepay-swap-pass/SKILL.md) — Chord Teammate Skill & References
-  - [FIELD_NOTES.md](file:///c:/Dev/EV-QR-Wallet/FIELD_NOTES.md) — Chord Deployment & Integration Field Notes Log
-  - [GO_LIVE_NOTE.md](file:///c:/Dev/EV-QR-Wallet/GO_LIVE_NOTE.md) — Owner-Readable Production Readiness Note
+  - [postman_collection.json](file:///c:/Dev/EV-QR-Wallet/postman_collection.json) — Ready-to-Import Postman Collection
 
 ## Architecture Overview
 
@@ -144,3 +150,12 @@ npm run station-scan RPP1.fake_pass_id.bad_mac
    - Enable the MCP server (`"enabled": true`) so Chord supplies its stored `auth_token` during static-auth probes.
    - Run tool discovery (`/tools`) and health check (`/health`, confirming `status: "ok"` in the JSON response body).
    - Set `enabled_tools` explicitly to `["verify_rider", "create_swap_pass_order", "get_order_status", "get_pass_balance"]`.
+
+---
+
+## How AI Tools Were Used
+
+I used **Antigravity (AI pair-programming assistant)** during this build to:
+1. **Scaffold & test the TypeScript backend and MCP server**: Accelerated writing boilerplate for the Express + Postgres schema, `HMAC-SHA256` QR token signing, Paystack test API integration, and Vitest test suite (`tests/`).
+2. **Debug live integration edge cases**: Used AI to cross-reference Chord's documentation when debugging MCP static-auth probe behavior (`401` when `enabled: false`), `handover_to_human` turn replacement on `AMOUNT_MISMATCH`, and enriching `get_pass_balance` with the last 5 station scans (`recent_redemptions`).
+3. **All architectural choices, business rules, Paystack test verification, Railway deployment, and Chord simulator testing were driven and verified hands-on in the live Chord workspace.**
