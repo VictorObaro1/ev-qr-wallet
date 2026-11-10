@@ -152,6 +152,6 @@ npm run station-scan RPP1.fake_pass_id.bad_mac
 ## How AI Tools Were Used
 
 I used **Antigravity (AI pair-programming assistant)** during this build to:
-1. **Scaffold & test the TypeScript backend and MCP server**: Accelerated writing boilerplate for the Express + Postgres schema, `HMAC-SHA256` QR token signing, Paystack test API integration, and Vitest test suite (`tests/`).
+1. **Scaffold & test the TypeScript backend and MCP server**: Accelerated writing boilerplate for the Express + Postgres schema, `HMAC-SHA256` QR token signing, and Vitest test suite (`tests/`).
 2. **Debug live integration edge cases**: Used AI to cross-referencing while debugging MCP static-auth probe behavior (`401` when `enabled: false`), `handover_to_human` turn replacement on `AMOUNT_MISMATCH`, and enriching `get_pass_balance` with the last 5 station scans (`recent_redemptions`).
 3. **Architectural choices, business rules, Railway deployment.**
