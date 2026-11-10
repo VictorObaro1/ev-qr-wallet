@@ -8,7 +8,7 @@ End-to-end WhatsApp EV battery swap-pass purchasing and station redemption syste
 - **Deliverables**:
   - [PRD.md](file:///c:/Dev/EV-QR-Wallet/PRD.md) — Product Requirements Document
   - [ridepay-swap-pass/SKILL.md](file:///c:/Dev/EV-QR-Wallet/ridepay-swap-pass/SKILL.md) — Chord Teammate Skill & References
-  - [FIELD_NOTES.md](file:///c:/Dev/EV-QR-Wallet/FIELD_NOTES.md) — Real Engineering & Integration Field Notes Log (11 documented issues & fixes)
+  - [FIELD_NOTES.md](file:///c:/Dev/EV-QR-Wallet/FIELD_NOTES.md) — Chord Deployment & Integration Field Notes Log
   - [GO_LIVE_NOTE.md](file:///c:/Dev/EV-QR-Wallet/GO_LIVE_NOTE.md) — Owner-Readable Production Readiness Note
 
 ## Architecture Overview
