@@ -16,6 +16,10 @@
     {
       "key": "station_token",
       "value": "station_live_token_ridepay_2026"
+    },
+    {
+      "key": "paystack_secret",
+      "value": "YOUR_PAYSTACK_TEST_SECRET_KEY"
     }
   ],
   "item": [
@@ -175,7 +179,38 @@
       }
     },
     {
-      "name": "5. Paystack Webhook — Reject Forged Signature (POST /v1/webhooks/paystack)",
+      "name": "5A. Mock Payment in Postman (Signed Paystack Webhook)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const secret = pm.collectionVariables.get('paystack_secret');",
+              "const rawBody = pm.request.body.raw;",
+              "const sig = CryptoJS.HmacSHA512(rawBody, secret).toString(CryptoJS.enc.Hex);",
+              "pm.request.headers.upsert({ key: 'x-paystack-signature', value: sig });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"event\": \"charge.success\",\n  \"data\": {\n    \"reference\": \"postman_ref_001\",\n    \"amount\": 150000,\n    \"metadata\": {\n      \"order_id\": \"ORD-0001\"\n    }\n  }\n}"
+        },
+        "url": "{{base_url}}/v1/webhooks/paystack"
+      }
+    },
+    {
+      "name": "5B. Paystack Webhook — Reject Forged Signature (401 Test)",
       "request": {
         "method": "POST",
         "header": [
