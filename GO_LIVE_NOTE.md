@@ -26,12 +26,6 @@
 - **Rider pays the wrong amount (e.g., ₦1,000 instead of ₦2,250)**: No pass is issued. The assistant tells the rider the exact difference and hands the conversation to your Finance/Support team in Chord with the Order ID so you can top it up or refund it from the Paystack dashboard.
 - **Rider pays late (after the 30-minute window expires)**: No pass is issued automatically. The assistant sees that money arrived late on an expired order and routes the chat to Finance/Support to confirm and resolve manually.
 
-## 4. Honest Limit: QR Code Sharing (and How We Handle It)
-- **The risk**: A rider could screenshot their QR code and send it to a friend. The system will **never** give away free swaps (once a 2-swap pass is scanned twice, it is empty), but a screenshot alone doesn't prove which rider is standing at the station if a rider claims *"someone else used my pass."*
-- **Practical fix for launch**:
-  1. Show the rider's **registered name and bike plate number** on the station attendant's screen when they scan the QR code.
-  2. Put a **90-minute cooldown** between scans on the same pass (since one delivery bike does not run down a fresh battery in a few minutes).
-
-## 5. Who Owns What Day-to-Day
+## 4. Who Owns What Day-to-Day
 - **Station Attendants**: Scan rider QR codes at the station. If a pass says `0 swaps left` or `Expired`, they direct the rider back to the WhatsApp assistant to buy a new bundle.
 - **Operations / Finance Team**: Watch the Chord Inbox for handed-off chats (wrong amount paid, late transfers, or suspended riders) and handle refunds in the Paystack dashboard.

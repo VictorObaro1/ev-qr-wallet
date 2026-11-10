@@ -9,7 +9,7 @@ Real issues hit while deploying and integrating the **EV-QR-Wallet (`ridepay-swa
   ```text
   MCP server error: MCP server returned HTTP 401: {"error":{"code":"UNAUTHORIZED","message":"Missing or invalid Authorization Bearer [REDACTED] for MCP server.","retryable":false}}
   ```
-- **How I worked out the cause**: Our `/mcp` auth middleware only returns this `401` message when the `Authorization: Bearer` header is missing or wrong. Checking the Chord MCP docs (Section 3) showed why: *"a disabled server or workspace does not supply its stored bearer/API-key credential to these probes."* Because the server was disabled (`enabled: false`), Chord did not send the bearer token during the probe.
+- **How I worked out the cause**: `/mcp` auth middleware only returns this `401` message when the `Authorization: Bearer` header is missing or wrong. Checking the Chord MCP docs (Section 3) showed why: *"a disabled server or workspace does not supply its stored bearer/API-key credential to these probes."* Because the server was disabled (`enabled: false`), Chord did not send the bearer token during the probe.
 - **How I fixed it or worked around it**: Set `"auth_type": "bearer"`, saved the token in `"auth_token"`, attached the server to the teammate, **enabled the MCP server first**, and then ran tool discovery and health check.
 - **What I'd change in Chord, its docs, or its API**:
   1. Send the stored `auth_token` when an admin probes a disabled server, or return a clear error like `"Enable the server before probing static credentials"` instead of sending an unauthenticated request that triggers a remote `401`.
@@ -22,7 +22,7 @@ Real issues hit while deploying and integrating the **EV-QR-Wallet (`ridepay-swa
   ```text
   The agent didn't answer (Chord returned 502). Try sending again.
   ```
-- **How I worked out the cause**: Compared the `502` timestamp (`02:25 PM`) with our MCP setup logs. At `02:25 PM`, the teammate had the MCP server attached, but the MCP server was still failing auth (`401`). When tool initialization fails at the start of a chat turn, Chord returns a generic `502` in Test Chat.
+- **How I worked out the cause**: Compared the `502` timestamp with MCP setup logs. The teammate had the MCP server attached, but the MCP server was still failing auth (`401`). When tool initialization fails at the start of a chat turn, Chord returns a generic `502` in Test Chat.
 - **How I fixed it or worked around it**: Enabled the MCP server with the valid bearer token and confirmed `/health` returned `status: "ok"`. After that (`02:39 PM`), Test Chat worked right away.
 - **What I'd change in Chord, its docs, or its API**: Show the specific cause on `502` banners in Test Chat (for example: `"502: Attached MCP server returned 401 during tool setup"`) so builders know right away that the MCP server caused the error.
 
