@@ -1,0 +1,199 @@
+{
+  "info": {
+    "name": "EV-QR-Wallet (RidePay Swap-Pass API & MCP)",
+    "description": "Ready-to-run Postman Collection for EV-QR-Wallet on Railway (https://ev-qr-wallet-production.up.railway.app). Includes Health, all 4 MCP Tools (/mcp), Station Scanner REST (/v1/passes/redeem), QR Image (/v1/passes/:pass_id/qr.png), and Paystack Webhook (/v1/webhooks/paystack).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://ev-qr-wallet-production.up.railway.app"
+    },
+    {
+      "key": "mcp_token",
+      "value": "mcp_live_token_ridepay_2026"
+    },
+    {
+      "key": "station_token",
+      "value": "station_live_token_ridepay_2026"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health Check (GET /health)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/health"
+      }
+    },
+    {
+      "name": "2A. MCP Health Probe (GET /mcp)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{mcp_token}}"
+          }
+        ],
+        "url": "{{base_url}}/mcp"
+      }
+    },
+    {
+      "name": "2B. MCP List Tools (tools/list)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{mcp_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"tools/list\",\n  \"params\": {}\n}"
+        },
+        "url": "{{base_url}}/mcp"
+      }
+    },
+    {
+      "name": "2C. MCP Tool: verify_rider",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{mcp_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"verify_rider\",\n    \"arguments\": {\n      \"rider_id\": \"RDR-0001\"\n    }\n  }\n}"
+        },
+        "url": "{{base_url}}/mcp"
+      }
+    },
+    {
+      "name": "2D. MCP Tool: create_swap_pass_order",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{mcp_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 3,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"create_swap_pass_order\",\n    \"arguments\": {\n      \"rider_id\": \"RDR-0001\",\n      \"quantity\": 2,\n      \"idempotency_key\": \"postman-order-001\"\n    }\n  }\n}"
+        },
+        "url": "{{base_url}}/mcp"
+      }
+    },
+    {
+      "name": "2E. MCP Tool: get_order_status",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{mcp_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 4,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_order_status\",\n    \"arguments\": {\n      \"order_id\": \"ORD-0001\"\n    }\n  }\n}"
+        },
+        "url": "{{base_url}}/mcp"
+      }
+    },
+    {
+      "name": "2F. MCP Tool: get_pass_balance (with last 5 station scans)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{mcp_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 5,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_pass_balance\",\n    \"arguments\": {\n      \"rider_id\": \"RDR-0001\"\n    }\n  }\n}"
+        },
+        "url": "{{base_url}}/mcp"
+      }
+    },
+    {
+      "name": "3. Station Redeem (POST /v1/passes/redeem)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{station_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"RPP1.42RzQQdappyT784BuJsA1g.xRwTt4iGP8qJz-38X2IHng\",\n  \"station_id\": \"STN-LAGOS-01\",\n  \"scan_id\": \"SCAN-POSTMAN-001\"\n}"
+        },
+        "url": "{{base_url}}/v1/passes/redeem"
+      }
+    },
+    {
+      "name": "4. QR Code PNG Image (GET /v1/passes/:pass_id/qr.png)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/v1/passes/42RzQQdappyT784BuJsA1g/qr.png"
+      }
+    },
+    {
+      "name": "5. Paystack Webhook — Reject Forged Signature (POST /v1/webhooks/paystack)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "x-paystack-signature",
+            "value": "invalid_forged_signature"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"event\": \"charge.success\",\n  \"data\": {\n    \"reference\": \"rp_ord_0001\",\n    \"amount\": 150000,\n    \"metadata\": {\n      \"order_id\": \"ORD-0001\",\n      \"rider_id\": \"RDR-0001\"\n    }\n  }\n}"
+        },
+        "url": "{{base_url}}/v1/webhooks/paystack"
+      }
+    }
+  ]
+}
